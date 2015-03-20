@@ -13,6 +13,10 @@ TouchID.prototype.verifyFingerprintWithCustomPasswordFallback = function (messag
   cordova.exec(successCallback, errorCallback, "TouchID", "verifyFingerprintWithCustomPasswordFallback", [message]);
 };
 
+TouchID.prototype.verifyFingerprintWithNoFallback = function (message, successCallback, errorCallback) {
+  cordova.exec(successCallback, errorCallback, "TouchID", "verifyFingerprintWithNoFallback", [message]);
+};
+
 TouchID.install = function () {
   if (!window.plugins) {
     window.plugins = {};

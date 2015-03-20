@@ -123,6 +123,46 @@ NSString *keychainItemServiceName;
   }];
 }
 
+// This implementation uses LocalAuthentication and has no fallback at all
+- (void) verifyFingerprintWithNoFallback:(CDVInvokedUrlCommand*)command {
+    
+    NSString *message = [command.arguments objectAtIndex:0];
+    NSString *callbackId = command.callbackId;
+    
+    if (NSClassFromString(@"LAContext") == NULL) {
+        [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR]
+                                    callbackId:callbackId];
+        return;
+    }
+    
+    [self.commandDelegate runInBackground:^{
+        NSError *error = nil;
+        LAContext *laContext = [[LAContext alloc] init];
+        
+        // Removes the Enter Password option
+        laContext.localizedFallbackTitle = @"";
+        
+        if (![laContext canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:&error]) {
+            [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:[error localizedDescription]]
+                                        callbackId:callbackId];
+            return;
+        }
+        
+        [laContext evaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics localizedReason:message reply:^(BOOL authOK, NSError *error) {
+            if (authOK) {
+                [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK]
+                                            callbackId:command.callbackId];
+            } else {
+                // invoked when the scan failed 3 times in a row, the cancel button was pressed, or the 'enter password' button was pressed
+                NSArray *errorKeys = @[@"code", @"localizedDescription"];
+                [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                                     messageAsDictionary:[error dictionaryWithValuesForKeys:errorKeys]]
+                                            callbackId:callbackId];
+            }
+        }];
+    }];
+}
+
 // Note that this needs to run only once but it can deal with multiple runs
 - (BOOL) createKeyChainEntry {
   NSMutableDictionary	* attributes = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
